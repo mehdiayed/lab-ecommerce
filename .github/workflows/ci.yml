@@ -1,0 +1,69 @@
+# CI : build + tests. Aucun déploiement.
+name: CI
+
+on:
+  push:
+    branches: [ci/pipeline]
+  pull_request:
+    branches: [ci/pipeline]
+
+# Moindre privilège : lecture seule par défaut, élargie par job si nécessaire.
+permissions:
+  contents: read
+
+# Un nouveau push annule la CI en cours sur la même ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  # restore, build Release, tests (Testcontainers => Docker, présent sur ubuntu-latest).
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      checks: write # requis par le reporter pour créer le check « Tests »
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Installer le SDK .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore ECommerce.slnx
+
+      - name: Build (Release)
+        run: dotnet build ECommerce.slnx --configuration Release --no-restore
+
+      # Les tests du catalogue démarrent un vrai PostgreSQL via Testcontainers.
+      - name: Tests
+        run: >
+          dotnet test ECommerce.slnx --configuration Release --no-build
+          --logger "trx" --results-directory TestResults
+
+      # Publication des résultats : artefact brut (toujours, même en cas d'échec)...
+      - name: Publier les résultats (artefact)
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/**/*.trx
+          if-no-files-found: error
+
+      # ... et résumé lisible dans l'onglet Checks (sans droit d'écriture sur les PR de forks : sans gravité).
+      - name: Publier les résultats (résumé)
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        uses: dorny/test-reporter@v1
+        with:
+          name: Tests
+          path: TestResults/**/*.trx
+          reporter: dotnet-trx

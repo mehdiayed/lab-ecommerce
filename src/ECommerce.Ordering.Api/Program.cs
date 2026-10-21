@@ -40,3 +40,6 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+// Makes the Program class visible to the integration tests (WebApplicationFactory<Program>).
+public partial class Program { }

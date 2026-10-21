@@ -1,7 +1,7 @@
 # ECommerce.Catalog.Api
 
 **Type:** ASP.NET Core minimal API
-**Depends on:** ECommerce.ServiceDefaults, EF Core (in-memory provider)
+**Depends on:** ECommerce.ServiceDefaults, EF Core + Npgsql (PostgreSQL via Aspire)
 
 The Catalog microservice. Owns products. Completely standalone — it knows nothing about
 Ordering or the Gateway.
@@ -10,18 +10,21 @@ Ordering or the Gateway.
 
 | File | Responsibility |
 |---|---|
-| `Models/Product.cs` | The `Product` entity: Id, Name, Description, Price, AvailableStock. |
-| `Data/CatalogDbContext.cs` | EF Core context. Configures the schema and **seeds 4 demo products** on startup. |
+| `Models/Product.cs` | The `Product` entity: Id, Sku, Name, Description, Price, AvailableStock, CategoryId. |
+| `Models/Category.cs` | The `Category` entity: Id, Name. |
+| `Migrations/` | EF Core migrations (`InitialCreate`). Applied at startup in Development. |
+| `Data/CatalogDbContext.cs` | EF Core context. Configures the schema (unique SKU/category name, FK `RESTRICT`, CHECK constraints) and **seeds 3 categories and 4 demo products**. |
 | `Endpoints/CatalogEndpoints.cs` | REST routes grouped under `/api/products` + the `CreateProductRequest` DTO. |
-| `Program.cs` | Composition root: `AddServiceDefaults`, register DbContext + OpenAPI, map endpoints, ensure DB created. |
+| `Program.cs` | Composition root: `AddServiceDefaults`, `AddNpgsqlDbContext`, OpenAPI, map endpoints, apply migrations (Development). |
 
 ## Endpoints
 
 | Method | Route | Description |
 |---|---|---|
-| GET | `/api/products` | List all products |
+| GET | `/api/categories` | List categories |
+| GET | `/api/products` | List products; optional `?categoryId=` and `?search=` (name, SKU, description) |
 | GET | `/api/products/{id}` | Get one product (404 if missing) |
-| POST | `/api/products` | Create a product |
+| POST | `/api/products` | Create a product (requires `sku`, `categoryId`; 400 unknown category / invalid input, 409 duplicate SKU) |
 
 ## Patterns
 
@@ -32,6 +35,6 @@ Ordering or the Gateway.
 
 ## Storage
 
-Uses EF Core's **in-memory** provider (`UseInMemoryDatabase("catalog")`), re-seeded on every
-startup. Data does **not** survive a restart. Swap `UseInMemoryDatabase` for `UseNpgsql` /
-`UseSqlite` to persist.
+PostgreSQL, declared in the AppHost (`AddPostgres("postgres")`, database `catalogdb`, host port 5433,
+named volume `ecommerce-pgdata`). Data survives restarts. The schema is versioned with EF Core
+migrations (`dotnet ef migrations add <Name> --project src/ECommerce.Catalog.Api`).

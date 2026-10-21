@@ -76,9 +76,8 @@ vivent en mémoire). Ce guide est pensé pour être suivi **même sans connaîtr
 
 ## 3. Prérequis et installation
 
-Il faut **une seule chose** : le **SDK .NET 10**.
-👉 **Docker n'est PAS nécessaire** (l'application n'utilise aucun conteneur ; le tableau de
-bord tourne directement dans le programme).
+Il faut le **SDK .NET 10** et **Docker** (le service Catalog utilise un conteneur PostgreSQL lancé par Aspire).
+Une fois : `dotnet user-secrets set "Parameters:pg-password" "<mot de passe>" --project src/ECommerce.AppHost`.
 
 ### 3.1 Vérifier / installer le SDK .NET 10
 
@@ -235,9 +234,9 @@ curl -X POST http://<gateway>/ordering/api/orders \
 
 ## 8. Bon à savoir
 
-- **Les données ne sont pas persistées.** Les bases vivent en mémoire : les produits/commandes
-  créés disparaissent au prochain redémarrage, et les produits de démonstration reviennent.
-  Pour persister, on remplacerait la base en mémoire par PostgreSQL ou SQLite.
+- **Catalog est persisté** dans PostgreSQL (volume Docker `ecommerce-pgdata`, port 5433) : les produits
+  créés survivent aux redémarrages. **Ordering reste en mémoire** : les commandes disparaissent au
+  prochain redémarrage.
 - **Communication entre services en HTTP synchrone**, jamais via des adresses codées en dur :
   elles sont résolues par la découverte de services à partir des noms de `AppHost.cs`.
 

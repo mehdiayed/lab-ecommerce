@@ -1,0 +1,45 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git branch:*)",
+      "Bash(dotnet build:*)", "Bash(dotnet test:*)", "Bash(dotnet format:*)",
+      "Bash(dotnet list package:*)", "Bash(dotnet user-secrets list:*)",
+      "Bash(gitleaks:*)", "Bash(trivy:*)", "Bash(docker ps:*)", "Bash(docker images:*)"
+    ],
+    "ask": [
+      "Bash(git commit:*)", "Bash(git push:*)", "Bash(gh pr create:*)",
+      "Bash(dotnet add:*)", "Bash(dotnet user-secrets set:*)", "Bash(docker build:*)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)", "Bash(git push -f:*)", "Bash(gh pr merge:*)",
+      "Bash(dotnet ef database drop:*)",
+      "Read(./.env)", "Read(./**/.env)", "Read(./**/*.pem)", "Read(./**/*.key)",
+      "Read(./**/appsettings.*.local.json)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [ { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-start.sh" } ] }
+    ],
+    "PreToolUse": [
+      { "matcher": "Bash", "hooks": [
+        { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-destructive.sh" },
+        { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/secret-scan.sh" }
+      ]},
+      { "matcher": "Write|Edit|MultiEdit", "hooks": [
+        { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/scan-secrets-on-write.sh", "timeout": 10 }
+      ]}
+    ],
+    "PostToolUse": [
+      { "matcher": "Write|Edit|MultiEdit", "hooks": [
+        { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format-cs.sh", "timeout": 60 }
+      ]},
+      { "matcher": "Bash|Write|Edit|MultiEdit|mcp__.*", "hooks": [
+        { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/audit-log.sh" }
+      ]}
+    ],
+    "Stop": [
+      { "hooks": [ { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/tests-must-pass.sh", "timeout": 300 } ] }
+    ]
+  }
+}
