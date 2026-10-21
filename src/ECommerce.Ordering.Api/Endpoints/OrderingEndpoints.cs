@@ -32,11 +32,6 @@ public static class OrderingEndpoints
                 return Results.BadRequest("An order must contain at least one item.");
             }
 
-            if (request.Items.Any(i => i.Quantity <= 0))
-            {
-                return Results.BadRequest("Item quantity must be greater than zero.");
-            }
-
             var order = new Order
             {
                 Customer = request.Customer,

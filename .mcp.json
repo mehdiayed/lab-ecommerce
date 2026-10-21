@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "catalogdb": {
+      "command": "npx",
+      "args": ["-y", "@bytebase/dbhub@1.5.0", "--transport", "stdio",
+               "--config", "${CLAUDE_PROJECT_DIR:-.}/dbhub.toml"],
+      "env": {
+        "CATALOG_RO_PASSWORD": "${CATALOG_RO_PASSWORD}",
+        "CATALOG_DB_PORT": "${CATALOG_DB_PORT:-5433}"
+      }
+    }
+  }
+}

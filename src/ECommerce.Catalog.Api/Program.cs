@@ -8,7 +8,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 builder.Services.AddOpenApi();
-builder.AddNpgsqlDbContext<CatalogDbContext>("catalogdb");
+builder.Services.AddDbContext<CatalogDbContext>(options =>
+    options.UseInMemoryDatabase("catalog"));
 
 var app = builder.Build();
 
@@ -22,12 +23,11 @@ if (app.Environment.IsDevelopment())
 
 app.MapCatalogEndpoints();
 
-// Apply pending migrations (schema + seed) on startup, local development only.
-if (app.Environment.IsDevelopment())
+// Ensure the in-memory database is created and seeded on startup.
+using (var scope = app.Services.CreateScope())
 {
-    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
-    await db.Database.MigrateAsync();
+    db.Database.EnsureCreated();
 }
 
 app.Run();
