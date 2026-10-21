@@ -7,65 +7,89 @@
 <PageTitle>Catalog</PageTitle>
 
 <h1>Catalog</h1>
+<p class="lede">Add products to your setup, then place the order.</p>
 
-@if (_products is null)
-{
-    <p><em>Loading products…</em></p>
-}
-else
-{
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Product</th>
-                <th>Description</th>
-                <th class="text-end">Price</th>
-                <th class="text-end">Stock</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var p in _products)
+<div class="catalog-layout">
+    <section aria-label="Products">
+        @if (_products is null)
+        {
+            <div role="status" aria-live="polite">
+                <span class="visually-hidden">Loading products…</span>
+                <div class="skeleton"></div>
+                <div class="skeleton"></div>
+                <div class="skeleton"></div>
+            </div>
+        }
+        else if (_products.Count == 0)
+        {
+            <p class="notice">The catalog is empty. Products will appear here once they are added.</p>
+        }
+        else
+        {
+            <ul class="spec-list">
+                @foreach (var p in _products)
+                {
+                    <li class="spec-row">
+                        <h2 class="spec-name">@p.Name</h2>
+                        <p class="spec-desc">@p.Description</p>
+                        <div class="spec-buy">
+                            <div>
+                                <div class="price">@p.Price.ToString("C")</div>
+                                <div class="gauge @(p.AvailableStock < 30 ? "gauge-low" : "")">
+                                    <span class="gauge-track" aria-hidden="true">
+                                        <span class="gauge-fill" style="display:block;width:@StockPercent(p)%"></span>
+                                    </span>
+                                    <span>@(p.AvailableStock < 30 ? $"Only {p.AvailableStock} left" : $"{p.AvailableStock} in stock")</span>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" @onclick="() => AddToCart(p)" aria-label="Add @p.Name to your setup">Add</button>
+                        </div>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+
+    <aside class="setup" aria-labelledby="setup-title">
+        <h2 id="setup-title">Your setup</h2>
+
+        @if (_cart.Count == 0)
+        {
+            <p class="mb-0">Nothing here yet. Add a product to start.</p>
+        }
+        else
+        {
+            <ul class="setup-lines">
+                @foreach (var line in _cart)
+                {
+                    <li>
+                        <span>@line.Value × @line.Key.Name</span>
+                        <span>@((line.Key.Price * line.Value).ToString("C"))</span>
+                    </li>
+                }
+            </ul>
+            <div class="setup-total">
+                <span>Total</span>
+                <span>@_cart.Sum(c => c.Key.Price * c.Value).ToString("C")</span>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="customer">Customer name</label>
+                <input id="customer" class="form-control" @bind="_customer" autocomplete="name" />
+            </div>
+            <button class="btn btn-primary w-100" @onclick="PlaceOrder" disabled="@_placing">
+                @(_placing ? "Placing order…" : "Place order")
+            </button>
+        }
+
+        <div role="status" aria-live="polite">
+            @if (!string.IsNullOrEmpty(_message))
             {
-                <tr>
-                    <td>@p.Name</td>
-                    <td>@p.Description</td>
-                    <td class="text-end">@p.Price.ToString("C")</td>
-                    <td class="text-end">@p.AvailableStock</td>
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-outline-primary" @onclick="() => AddToCart(p)">Add</button>
-                    </td>
-                </tr>
+                <p class="notice @(_isError ? "notice-error" : "notice-ok") mt-3 mb-0">@_message</p>
             }
-        </tbody>
-    </table>
-
-    <h2>Cart</h2>
-    @if (_cart.Count == 0)
-    {
-        <p><em>Your cart is empty.</em></p>
-    }
-    else
-    {
-        <ul>
-            @foreach (var line in _cart)
-            {
-                <li>@line.Value × @line.Key.Name (@line.Key.Price.ToString("C"))</li>
-            }
-        </ul>
-
-        <div class="mb-2">
-            <label class="form-label">Customer name</label>
-            <input class="form-control" style="max-width: 320px" @bind="_customer" />
         </div>
-        <button class="btn btn-primary" @onclick="PlaceOrder" disabled="@_placing">Place order</button>
-    }
-
-    @if (!string.IsNullOrEmpty(_message))
-    {
-        <div class="alert @(_isError ? "alert-danger" : "alert-success") mt-3">@_message</div>
-    }
-}
+    </aside>
+</div>
 
 @code {
     private IReadOnlyList<ProductDto>? _products;
@@ -80,6 +104,9 @@ else
         _products = await Catalog.GetProductsAsync();
     }
 
+    private int StockPercent(ProductDto p) =>
+        _products is { Count: > 0 } ? Math.Clamp(p.AvailableStock * 100 / _products.Max(x => x.AvailableStock), 4, 100) : 0;
+
     private void AddToCart(ProductDto product)
     {
         _cart[product] = _cart.TryGetValue(product, out var qty) ? qty + 1 : 1;
@@ -90,7 +117,7 @@ else
     {
         if (string.IsNullOrWhiteSpace(_customer))
         {
-            _message = "Please enter a customer name.";
+            _message = "Enter a customer name to place the order.";
             _isError = true;
             return;
         }
@@ -105,14 +132,14 @@ else
 
         if (success)
         {
-            _message = "Order placed successfully!";
+            _message = "Order placed.";
             _isError = false;
             _cart.Clear();
             _customer = "";
         }
         else
         {
-            _message = $"Failed to place order: {error}";
+            _message = $"Order failed: {error}";
             _isError = true;
         }
     }

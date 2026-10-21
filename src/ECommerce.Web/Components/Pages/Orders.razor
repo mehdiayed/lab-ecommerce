@@ -7,36 +7,49 @@
 
 <h1>Orders</h1>
 
-<button class="btn btn-sm btn-outline-secondary mb-3" @onclick="Load">Refresh</button>
+<button class="btn btn-ghost mb-4" @onclick="Load">Refresh orders</button>
 
 @if (_orders is null)
 {
-    <p><em>Loading orders…</em></p>
+    <div role="status" aria-live="polite">
+        <span class="visually-hidden">Loading orders…</span>
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+    </div>
 }
 else if (_orders.Count == 0)
 {
-    <p><em>No orders yet. Place one from the <a href="/products">Catalog</a> page.</em></p>
+    <p class="notice">No orders yet. Add products from the <a href="/products">catalog</a> to place one.</p>
 }
 else
 {
     @foreach (var order in _orders)
     {
-        <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between">
-                <span><strong>Order #@order.Id</strong> — @order.Customer</span>
-                <span class="badge bg-info text-dark">@order.Status</span>
+        <section class="order" aria-labelledby="order-@order.Id">
+            <div class="order-head">
+                <h2 id="order-@order.Id">Order #@order.Id for @order.Customer</h2>
+                <span class="status">@order.Status</span>
             </div>
-            <div class="card-body">
-                <p class="text-muted">Placed @order.CreatedAt.LocalDateTime</p>
-                <ul>
+            <p class="order-meta">Placed @order.CreatedAt.LocalDateTime</p>
+            <table>
+                <caption class="visually-hidden">Items in order #@order.Id</caption>
+                <tbody>
                     @foreach (var item in order.Items)
                     {
-                        <li>@item.Quantity × @item.ProductName @@ @item.UnitPrice.ToString("C")</li>
+                        <tr>
+                            <td>@item.Quantity × @item.ProductName</td>
+                            <td>@item.UnitPrice.ToString("C") each</td>
+                        </tr>
                     }
-                </ul>
-                <strong>Total: @order.Total.ToString("C")</strong>
-            </div>
-        </div>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td>Total</td>
+                        <td>@order.Total.ToString("C")</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </section>
     }
 }
 
