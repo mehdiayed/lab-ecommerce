@@ -1,4 +1,4 @@
-# CI : build + tests + script SQL des migrations du catalogue. Aucun déploiement.
+# CI : build + tests. Aucun déploiement.
 name: CI
 
 on:
@@ -21,7 +21,7 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
-  # Job 1 : restore, build Release, tests (Testcontainers => Docker, présent sur ubuntu-latest).
+  # restore, build Release, tests (Testcontainers => Docker, présent sur ubuntu-latest).
   build-test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -67,38 +67,3 @@ jobs:
           name: Tests
           path: TestResults/**/*.trx
           reporter: dotnet-trx
-
-  # Job 2 : script SQL idempotent des migrations du catalogue, publié en artefact.
-  # Aucune base, aucun secret : le script est généré à partir du modèle EF.
-  migrations-sql:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Installer le SDK .NET 10
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
-
-      # dotnet-ef est épinglé dans .config/dotnet-tools.json.
-      - name: Restaurer les outils
-        run: dotnet tool restore
-
-      # dotnet-ef a besoin de project.assets.json : on restaure le projet du catalogue d'abord.
-      - name: Restore du projet Catalog
-        run: dotnet restore src/ECommerce.Catalog.Api
-
-      - name: Générer le script SQL idempotent
-        run: >
-          dotnet ef migrations script --idempotent
-          --project src/ECommerce.Catalog.Api
-          --output artifacts/catalog-migrations.sql
-
-      - name: Publier le script (artefact)
-        uses: actions/upload-artifact@v4
-        with:
-          name: catalog-migrations-sql
-          path: artifacts/catalog-migrations.sql
-          if-no-files-found: error
