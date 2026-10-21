@@ -23,7 +23,7 @@ public class CatalogEndpointsTests(CatalogApiFactory factory) : IClassFixture<Ca
         var products = await _client.GetFromJsonAsync<List<Product>>("/api/products");
 
         Assert.NotNull(products);
-        Assert.Contains(products!, p => p.Sku == "KB-MX-001");
+        Assert.Contains(products!, p => p.Sku == "KB-MECH-001");
     }
 
     [Fact]
@@ -92,7 +92,7 @@ public class CatalogEndpointsTests(CatalogApiFactory factory) : IClassFixture<Ca
     [Fact]
     public async Task CreateProduct_SkuDejaExistant_Retourne409()
     {
-        var doublon = new { Sku = "MS-WL-002", Name = "Copie", Description = (string?)null, Price = 10m, AvailableStock = 1, CategoryId = 1 };
+        var doublon = new { Sku = "MS-WLS-001", Name = "Copie", Description = (string?)null, Price = 10m, AvailableStock = 1, CategoryId = 1 };
 
         var response = await _client.PostAsJsonAsync("/api/products", doublon);
 
