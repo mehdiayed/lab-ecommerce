@@ -1,0 +1,69 @@
+# Pile de développement : PostgreSQL + Catalog + Ordering + Gateway + Web.
+# Lancer : docker compose up -d --build   (le mot de passe est lu dans .env)
+# Remplace Aspire en conteneurs : la découverte de services passe par des variables services__<nom>__http__0.
+name: ecommerce
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: catalogdb
+      POSTGRES_PASSWORD: ${PG_PASSWORD:?définir PG_PASSWORD dans .env}
+    volumes:
+      - ecommerce-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d catalogdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  catalog:
+    build:
+      context: .
+      dockerfile: src/ECommerce.Catalog.Api/Dockerfile
+    image: ecommerce-catalog:dev
+    environment:
+      # Development : les migrations sont appliquées au démarrage.
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__catalogdb: Host=postgres;Port=5432;Database=catalogdb;Username=postgres;Password=${PG_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ordering:
+    build:
+      context: .
+      dockerfile: src/ECommerce.Ordering.Api/Dockerfile
+    image: ecommerce-ordering:dev
+    environment:
+      services__catalog__http__0: http://catalog:8080
+    depends_on:
+      - catalog
+
+  gateway:
+    build:
+      context: .
+      dockerfile: src/ECommerce.Gateway/Dockerfile
+    image: ecommerce-gateway:dev
+    environment:
+      services__catalog__http__0: http://catalog:8080
+      services__ordering__http__0: http://ordering:8080
+    depends_on:
+      - catalog
+      - ordering
+
+  # Seul service exposé à l'hôte.
+  web:
+    build:
+      context: .
+      dockerfile: src/ECommerce.Web/Dockerfile
+    image: ecommerce-web:dev
+    ports:
+      - "8080:8080"
+    environment:
+      services__gateway__http__0: http://gateway:8080
+    depends_on:
+      - gateway
+
+volumes:
+  ecommerce-pgdata:
