@@ -3,9 +3,9 @@ name: CI
 
 on:
   push:
-    branches: [ci/pipeline]
+    branches: [feat/web-redesign]
   pull_request:
-    branches: [ci/pipeline]
+    branches: [feat/web-redesign]
 
 # Moindre privilège : lecture seule par défaut, élargie par job si nécessaire.
 permissions:
